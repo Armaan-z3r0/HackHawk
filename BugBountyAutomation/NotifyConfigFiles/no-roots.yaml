@@ -1,0 +1,6 @@
+discord:
+  - id: "0000"
+    discord_channel: "error-found-alert"
+    discord_username: "ERROR_AGENT"
+    discord_format: "{{data}}"
+    discord_webhook_url: "https://discord.com/api/webhooks/1259400041131671642/eOwcXaHZf6KrtAGzvSLil_oXdfX5hrqJc4eT-655yLLOiy0caUfm8S4I3zuoCvdD_4EC"

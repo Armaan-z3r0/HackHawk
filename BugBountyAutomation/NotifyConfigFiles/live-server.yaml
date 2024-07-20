@@ -1,0 +1,6 @@
+discord:
+  - id: "0001"
+    discord_channel: "liveserver-alerts"
+    discord_username: "LIVE_SERVER_AGENT"
+    discord_format: "{{data}}"
+    discord_webhook_url: "https://discord.com/api/webhooks/1259401486178189322/c5y6qYsgUcbclnafWaLA-TsO4HGPvbNy6Uce-Qi7v2I1GO7hUdOeJzzUY03DwR-5mB2w"
