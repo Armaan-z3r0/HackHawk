@@ -1,56 +1,98 @@
 import requests
 from bs4 import BeautifulSoup, Comment
 from concurrent.futures import ThreadPoolExecutor, as_completed
-
-def fetch_server_info(url, timeout=10):
+from utils import i , c , logger 
+    
+# Used make a dirtonary contening url and its source code
+def fetch_html_content(url, timeout=5):
     try:
         response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=timeout)
-        return url, response.text
+        logger.info(f"{c} : source code grabbed for {url}")
+        return {url : response.text}
     except requests.RequestException as e:
-        return url, 'X'
-
-def get_server_info(url_dict):
-    server_info = {}
+        logger.error(f"{i} : failed to grab the source code for {url}")
+        return {url : "X"}
     
-    for url, html_content in url_dict.items():
-        info = {}
+def process_url(url, data, timeout=10):
+    try:
+        html = data.get(url, '')  # Extract HTML content
+        server_info = []
 
-        # Check headers for 'Server' information
-        try:
-            response = requests.get(url)
-            if 'Server' in response.headers:
-                info['Server_Header'] = response.headers['Server']
-        except Exception as e:
-            info['Header_Error'] = str(e)
+        # Make the request to get server information
+        response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=timeout)
+        if 'Server' in response.headers:
+            server_info.append(response.headers['Server'])
 
-        # Parse HTML content
-        soup = BeautifulSoup(html_content, 'html.parser')
+        # Define potential server names
+        server_names = ['Apache', 'Tomcat', 'Mysql', 'Glassfish']
+        # Strip the HTML content
+        striped = html.strip()
+        # Determine the content type (HTML, XML, or empty)
+        page_content = ''
+        html_tags = ['<html>', '<head>', '<body>']
+        if striped.startswith('<?xml'):
+            page_content = 'XML'
+        else:
+            for tag in html_tags:
+                if tag in html:
+                    page_content = 'HTML'
+                    break
+        if not page_content:
+            page_content = 'Empty Webpage' if not html else 'Unknown'
 
-        # Find server info in meta tags or comments
-        meta_tags = soup.find_all('meta')
-        comments = soup.find_all(string=lambda text: isinstance(text, Comment))
+        # Process HTML and XML content differently
+        if page_content == 'HTML':
+            soup = BeautifulSoup(html, 'html.parser')
+            meta_tags = soup.find_all('meta')
+            h3_tags = soup.find_all('h3')
+            b_tags = soup.find_all('b')
 
-        # Extract server info from meta tags
-        for tag in meta_tags:
-            if 'server' in tag.attrs.get('name', '').lower() or 'server' in tag.attrs.get('content', '').lower():
-                info['Meta_Tag'] = tag.attrs
+            matching_param = []
+            server_names_lower = [sevname.lower() for sevname in server_names]
 
-        # Extract server info from comments
-        for comment in comments:
-            if 'server' in comment.lower():
-                info['Comment'] = comment
+            # Check meta tags
+            for info in meta_tags:
+                info_str = str(info).lower()
+                if any(word in info_str for word in server_names_lower):
+                    matching_param.append(info_str)
 
-        server_info[url] = info
+            # Check b tags
+            for info in b_tags:
+                if info.string:
+                    info_str = info.string.lower()
+                    if any(word in info_str for word in server_names_lower):
+                        matching_param.append(info_str)
 
-    return server_info
-    
-def fetch_server_info_concurrently(url_dict):
-    server_info = {}
-    
-    with ThreadPoolExecutor(max_workers=5) as executor:
-        futures = {executor.submit(get_server_info, {url: html_content}): url for url, html_content in url_dict.items()}
+            # Check h3 tags
+            for info in h3_tags:
+                if info.string:
+                    info_str = info.string.lower()
+                    if any(word in info_str for word in server_names_lower):
+                        matching_param.append(info_str)
+
+            server_info.extend(matching_param)
+
+        elif page_content == 'XML':
+            server_info.append("XML Page")
+
+        elif page_content == 'Empty Webpage':
+            server_info.append("Empty Webpage")
+
+        else:
+            server_info.append("Unknown Data Available")
+
+        return url, server_info
+
+    except Exception as e:
+        logger.critical(f"Error occurred for {url} : {e}")
+        return url, ["Error"]
+
+def get_server_version(web_info_dict, timeout=10):
+    server_versions = {}
+
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [executor.submit(process_url, url, html, timeout) for url, html in web_info_dict.items()] 
         for future in as_completed(futures):
-            url_info = future.result()
-            server_info.update(url_info)
-    
-    return server_info
+            url, result = future.result()
+            server_versions[url] = result
+    return server_versions  

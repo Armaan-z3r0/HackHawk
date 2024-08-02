@@ -3,11 +3,11 @@ from utils import run_command ,logger ,c , i
 from root_finder import find_root_txt_files
 
 def main():
-    base_directory = '/home/avis/Desktop/BugBountyAutomation'  # Replace with your actual base directory path
+    base_directory = '/home/pixel/HackHawk/BugBountyAutomation/'  # Replace with your actual base directory path
 
     try:
         if os.path.isdir(base_directory):
-            find_root_txt_files(base_directory)
+           find_root_txt_files(base_directory)
         else:
             # Handle case where base directory doesn't exist
             notify_message = "NO such directory found"
@@ -28,3 +28,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

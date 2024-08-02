@@ -2,7 +2,7 @@ import os
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from utils import run_command ,logger ,c , i
-from server_info import fetch_server_info, fetch_server_info_concurrently
+from server_info import fetch_html_content, get_server_version 
 
 def process_file(file_path, dict_path, dict_name):
     try:
@@ -56,26 +56,25 @@ def process_file(file_path, dict_path, dict_name):
 
         Webinfo_dict = {}
         server_info = {}
-
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            futures = {executor.submit(fetch_server_info, url): url for url in webservers_file_content}
+        
+        with ThreadPoolExecutor(max_workers=50) as executor:
+            futures = {executor.submit(fetch_html_content,url): url for url in webservers_file_content}
             for future in as_completed(futures):
-                url, result = future.result()
-                Webinfo_dict[url] = result
+                url = futures[future]
+                try:
+                    response = future.result()
+                    Webinfo_dict[url] = response
+                except Exception as e:
+                    Webinfo_dict[url] = f"Error: {e}"
 
-        server_info = fetch_server_info_concurrently(Webinfo_dict)
-        decent_server_info = {}
-        server_name_pattern = re.compile(r'\b([a-zA-Z0-9\-\.]+)\b')
-        for url, html in server_info.items():
-            matches = server_name_pattern.findall(html)
-            for match in matches:
-                if "server" in match.lower() or "srv" in match.lower():
-                    decent_server_info[url] = match
-                else:
-                    if url not in decent_server_info:
-                        decent_server_info[url] = 0        
-        for url, info in decent_server_info.items():
-            print(f"{url}: {info}")
+        server_info = get_server_version(Webinfo_dict)
+                            
+        with open(f"{dict_path}/server_info.txt",'w') as file :
+            file.write(f"{'URL':<50}{'SERVER':<20}\n")
+            file.write(f"{'-'*50}{'-'*20}\n")
+            for url,version in server_info.items():
+                version_str = ', '.join(version)
+                file.write("{:<50}{:20}\n".format(url,version_str))
 
     except Exception as e:
         logger.error(f"{i} Unexpected error for {file_path}: {e}")
