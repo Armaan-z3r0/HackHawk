@@ -42,7 +42,7 @@ def process_url(url, data, timeout=10):
 
         # Process HTML and XML content differently
         if page_content == 'HTML':
-            soup = BeautifulSoup(html, 'html.parser')
+            soup = BeautifulSoup(html, 'lxml')
             meta_tags = soup.find_all('meta')
             h3_tags = soup.find_all('h3')
             b_tags = soup.find_all('b')
@@ -73,6 +73,14 @@ def process_url(url, data, timeout=10):
             server_info.extend(matching_param)
 
         elif page_content == 'XML':
+            soup = BeautifulSoup(html,"lxml-xml")
+            error = soup.find_all('Error')
+            code = soup.find_all('Code')                    
+            matching_param = []
+            if not error :
+                matching_param.append(error)
+            if not code :
+                matching_param.append(code)
             server_info.append("XML Page")
 
         elif page_content == 'Empty Webpage':
